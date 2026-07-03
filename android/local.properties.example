@@ -1,0 +1,5 @@
+sdk.dir=/path/to/android-sdk
+
+iflytek.appId=
+iflytek.apiKey=
+iflytek.apiSecret=
