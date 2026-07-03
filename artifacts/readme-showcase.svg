@@ -1,0 +1,110 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF8"/>
+      <stop offset="0.55" stop-color="#F5EFE4"/>
+      <stop offset="1" stop-color="#E9DFD0"/>
+    </linearGradient>
+    <linearGradient id="heroCard" x1="424" y1="122" x2="776" y2="612" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2D271F"/>
+      <stop offset="1" stop-color="#8A6331"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#4A3824" flood-opacity="0.18"/>
+    </filter>
+    <style>
+      .ink{fill:#211D18}
+      .muted{fill:#877A6C}
+      .gold{fill:#8A6331}
+      .soft{fill:#F8F2E8}
+      .line{stroke:#E4DACB;stroke-width:2}
+      .title{font:700 42px Arial, sans-serif}
+      .h1{font:800 64px Arial, sans-serif;letter-spacing:0}
+      .h2{font:700 28px Arial, sans-serif}
+      .body{font:500 20px Arial, sans-serif}
+      .small{font:500 16px Arial, sans-serif}
+      .tiny{font:600 13px Arial, sans-serif}
+    </style>
+  </defs>
+
+  <rect width="1200" height="720" rx="44" fill="url(#bg)"/>
+
+  <g opacity="0.45">
+    <circle cx="104" cy="104" r="4" fill="#C7B69F"/>
+    <circle cx="1096" cy="116" r="4" fill="#C7B69F"/>
+    <circle cx="1038" cy="610" r="4" fill="#C7B69F"/>
+    <circle cx="152" cy="616" r="4" fill="#C7B69F"/>
+  </g>
+
+  <text x="72" y="108" class="gold tiny">KCUST AI</text>
+  <text x="72" y="178" class="ink h1">客户管理</text>
+  <text x="76" y="222" class="muted body">家装全案定制行业 · 客户工作台 · AI Agent</text>
+
+  <g transform="translate(72 292)">
+    <rect width="250" height="70" rx="24" fill="#FFFDF8" stroke="#E4DACB"/>
+    <text x="26" y="30" class="gold tiny">TODAY</text>
+    <text x="26" y="52" class="ink small">今日待跟进 4 位客户</text>
+  </g>
+  <g transform="translate(72 382)">
+    <rect width="250" height="70" rx="24" fill="#FFFDF8" stroke="#E4DACB"/>
+    <text x="26" y="30" class="gold tiny">AGENT</text>
+    <text x="26" y="52" class="ink small">一句话生成结构化草稿</text>
+  </g>
+  <g transform="translate(72 472)">
+    <rect width="250" height="70" rx="24" fill="#FFFDF8" stroke="#E4DACB"/>
+    <text x="26" y="30" class="gold tiny">OVERLAY</text>
+    <text x="26" y="52" class="ink small">任意界面呼出悬浮助手</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="424" y="88" width="352" height="560" rx="46" fill="#FFFDF8" stroke="#E2D6C4" stroke-width="2"/>
+    <rect x="448" y="120" width="304" height="496" rx="34" fill="#FFFCF6"/>
+    <text x="472" y="168" class="gold tiny">KCUST AI</text>
+    <text x="472" y="220" class="ink title">客户工作台</text>
+    <circle cx="704" cy="174" r="32" fill="#F0E6D8"/>
+    <path d="M704 158V181" stroke="#8A6331" stroke-width="5" stroke-linecap="round"/>
+    <path d="M692 176C692 190 716 190 716 176" stroke="#8A6331" stroke-width="4" stroke-linecap="round"/>
+
+    <rect x="472" y="252" width="256" height="68" rx="23" fill="#F3E9DA"/>
+    <text x="496" y="294" class="gold body">本地客户库已就绪</text>
+
+    <rect x="472" y="348" width="256" height="116" rx="30" fill="url(#heroCard)"/>
+    <text x="496" y="386" fill="#F9F1E5" class="tiny">重点客户</text>
+    <text x="496" y="434" fill="#FFFFFF" class="h2">张总 · 无锡</text>
+    <rect x="640" y="372" width="66" height="34" rx="17" fill="#FFFDF8"/>
+    <text x="660" y="394" class="gold tiny">方案</text>
+
+    <rect x="472" y="492" width="116" height="78" rx="20" fill="#F8F2E8"/>
+    <text x="492" y="522" class="muted small">预算</text>
+    <text x="492" y="552" class="ink body">50w</text>
+    <rect x="612" y="492" width="116" height="78" rx="20" fill="#F8F2E8"/>
+    <text x="632" y="522" class="muted small">健康度</text>
+    <text x="632" y="552" class="ink body">82</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="802" y="154" width="286" height="380" rx="34" fill="#FFFDF8" stroke="#E2D6C4" stroke-width="2"/>
+    <text x="830" y="204" class="ink h2">Agent 对话</text>
+    <rect x="830" y="232" width="210" height="54" rx="20" fill="#F3E9DA"/>
+    <text x="852" y="265" class="gold small">模型正在生成</text>
+    <rect x="830" y="314" width="230" height="94" rx="24" fill="#F8F2E8" stroke="#E2D6C4"/>
+    <text x="852" y="346" class="ink small">客户草稿等待确认</text>
+    <text x="852" y="374" class="muted tiny">城市：无锡 · 预算：50w</text>
+    <rect x="852" y="430" width="92" height="36" rx="18" fill="#F0E6D8"/>
+    <text x="879" y="453" class="gold tiny">取消</text>
+    <rect x="960" y="430" width="100" height="36" rx="18" fill="#2D271F"/>
+    <text x="982" y="453" fill="#FFFFFF" class="tiny">确认保存</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="820" y="560" width="250" height="72" rx="36" fill="#FFFDF8" stroke="#E2D6C4" stroke-width="2"/>
+    <circle cx="858" cy="596" r="24" fill="#F0E6D8"/>
+    <path d="M858 585V604" stroke="#8A6331" stroke-width="4" stroke-linecap="round"/>
+    <text x="898" y="603" class="ink small">按住录音 · 松开发送</text>
+  </g>
+
+  <g transform="translate(1070 294)" filter="url(#shadow)">
+    <rect width="52" height="132" rx="26" fill="#8A6331"/>
+    <text x="19" y="78" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="700">‹</text>
+  </g>
+</svg>
