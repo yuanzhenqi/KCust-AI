@@ -123,6 +123,23 @@ describe('customer domain behavior', () => {
     expect(result.customers.find((customer) => customer.id === 'c-li')).toEqual(baseCustomers[1])
   })
 
+  it('applies custom profile values to the matched customer', () => {
+    const result = applyCustomerUpdateToBestMatch(baseCustomers, {
+      customerId: 'c-zhang',
+      customerName: '张总',
+      city: '无锡',
+      profileValues: {
+        decisionMaker: '李总',
+      },
+      now: '2026-05-25T21:05:00.000+08:00',
+    })
+
+    expect(result.updatedCustomer?.profileValues?.decisionMaker).toMatchObject({
+      value: '李总',
+      updatedAt: '2026-05-25T21:05:00.000+08:00',
+    })
+  })
+
   it('normalizes profile facts when the model sends them as need text', () => {
     const result = applyCustomerUpdateToBestMatch(
       [{ ...baseCustomers[0], budgetWan: null, household: '', needs: ['智能家居'] }],

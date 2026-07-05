@@ -789,10 +789,11 @@ button:disabled {
   background: #fffdf8;
 }
 
-.setting-key-card > div {
+.setting-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .setting-key-card label {
@@ -807,15 +808,278 @@ button:disabled {
   font-size: 12px;
 }
 
-.setting-key-card input {
+.setting-key-card input,
+.setting-key-card select,
+.setting-key-card textarea {
   min-width: 0;
-  height: 42px;
+  width: 100%;
   border: 1px solid rgba(98, 80, 57, 0.12);
   border-radius: 14px;
   padding: 0 12px;
   outline: 0;
   color: #2a241d;
   background: #fbf7ef;
+  font: inherit;
+}
+
+.setting-key-card input,
+.setting-key-card select {
+  height: 42px;
+}
+
+.setting-key-card textarea {
+  min-height: 76px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.setting-key-card select {
+  appearance: none;
+}
+
+.profile-field-manager {
+  gap: 14px;
+}
+
+.profile-field-note {
+  color: #6d6257;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.profile-template-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-template-panel > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-template-panel button {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 78px;
+  padding: 12px;
+  border: 1px solid rgba(98, 80, 57, 0.1);
+  border-radius: 16px;
+  text-align: left;
+  color: #2a241d;
+  background: #fbf7ef;
+}
+
+.profile-template-panel button:active {
+  transform: translateY(1px);
+}
+
+.profile-template-panel strong {
+  font-size: 13px;
+}
+
+.profile-template-panel small {
+  color: #847667;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.profile-field-preview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fbf7ef;
+}
+
+.profile-field-preview > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-field-preview strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #6f512d;
+  background: #efe4d3;
+  font-size: 12px;
+}
+
+.profile-field-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-field-row {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fbf7ef;
+  box-shadow: inset 0 0 0 1px rgba(98, 80, 57, 0.08);
+}
+
+.profile-field-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  text-align: left;
+  color: #2a241d;
+  background: transparent;
+}
+
+.profile-field-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff8ea;
+  background: #8a6331;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profile-field-main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.profile-field-main strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-field-main small {
+  overflow: hidden;
+  color: #847667;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-field-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 76px;
+}
+
+.profile-field-badges em {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #6f512d;
+  background: #efe4d3;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.profile-field-editor {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.profile-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-field-hint {
+  grid-column: 1 / -1;
+}
+
+.profile-field-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-field-switches label {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #efe4d3;
+}
+
+.profile-field-switches input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+}
+
+.profile-field-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.profile-field-editor-actions > span {
+  color: #8b7b68;
+  font-size: 12px;
+}
+
+.danger-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: #8b3d30;
+  background: #f3ddd5;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 460px) {
+  .profile-template-panel > div {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-template-panel button {
+    min-height: 0;
+  }
+
+  .profile-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-field-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .profile-field-badges {
+    grid-column: 2;
+    justify-content: flex-start;
+    max-width: none;
+  }
 }
 
 .model-option-list {
@@ -1000,7 +1264,7 @@ button:disabled {
   position: relative;
   display: block;
   height: 100%;
-  padding-bottom: 154px;
+  padding-bottom: 184px;
 }
 
 .agent-chat-screen .agent-flow {
@@ -1016,7 +1280,7 @@ button:disabled {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-rows: auto 44px;
+  grid-template-rows: minmax(96px, auto) 44px;
   gap: 8px;
   padding: 10px;
   border-radius: 22px;
@@ -1025,14 +1289,14 @@ button:disabled {
 }
 
 .agent-chat-screen .assistant-input textarea {
-  min-height: 72px;
-  max-height: 132px;
+  min-height: 96px;
+  max-height: 168px;
   padding: 2px 4px;
 }
 
 .assistant-input-actions {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) auto;
+  grid-template-columns: 54px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -1391,7 +1655,7 @@ button:disabled {
   }
 
   .agent-chat-screen {
-    padding-bottom: 150px;
+    padding-bottom: 176px;
   }
 
   .agent-chat-screen .agent-flow {
@@ -1403,7 +1667,7 @@ button:disabled {
   }
 
   .assistant-input-actions {
-    grid-template-columns: 50px minmax(0, 1fr) 86px;
+    grid-template-columns: 50px minmax(0, 1fr);
   }
 
   .hold-voice-button {

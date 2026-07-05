@@ -2,6 +2,30 @@ export type CustomerStage = '线索' | '初聊' | '量房' | '方案' | '报价'
 
 export type SyncStatus = 'local' | 'pending-sync' | 'synced'
 
+export type ProfileFieldType = 'text' | 'number' | 'singleSelect' | 'multiSelect' | 'date' | 'boolean'
+
+export type ProfileFieldPrimitiveValue = string | number | boolean | string[] | null
+
+export interface ProfileFieldValue {
+  value: ProfileFieldPrimitiveValue
+  sourceText?: string
+  updatedAt: string
+  confidence?: number
+}
+
+export interface ProfileFieldDefinition {
+  id: string
+  key: string
+  label: string
+  description: string
+  type: ProfileFieldType
+  options?: string[]
+  enabled: boolean
+  showInSummary: boolean
+  extractionHint: string
+  order: number
+}
+
 export interface Customer {
   id: string
   name: string
@@ -17,6 +41,7 @@ export interface Customer {
   notes: string
   nextFollowUpAt: string | null
   lastInteractionAt: string | null
+  profileValues?: Record<string, ProfileFieldValue>
   createdAt: string
   updatedAt: string
   deletedAt?: string | null
@@ -42,6 +67,7 @@ export interface CustomerDraft {
   firstInteractionAt?: string
   firstInteractionSummary?: string
   nextAction?: string
+  profileValues?: Record<string, ProfileFieldPrimitiveValue>
 }
 
 export interface CustomerUpdateDraft {
@@ -58,6 +84,7 @@ export interface CustomerUpdateDraft {
   sourceChannel?: string
   stylePreference?: string
   notes?: string
+  profileValues?: Record<string, ProfileFieldPrimitiveValue>
 }
 
 export interface Todo {
@@ -145,6 +172,7 @@ export interface LocalSnapshot {
   reminders: Reminder[]
   calendarEventLinks: CalendarEventLink[]
   assistantHistory: AssistantHistoryMessage[]
+  profileFieldDefinitions: ProfileFieldDefinition[]
 }
 
 export interface HealthScore {

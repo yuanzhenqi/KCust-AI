@@ -11,6 +11,7 @@ import type {
   Reminder,
   Todo,
 } from '../domain/types'
+import { DEFAULT_PROFILE_FIELD_DEFINITIONS } from '../domain/profileFields'
 
 class MemoryStorage implements KeyValueStorage {
   private values = new Map<string, string>()
@@ -149,6 +150,7 @@ describe('local schema snapshot', () => {
       'reminders',
       'calendarEventLinks',
       'assistantHistory',
+      'profileFieldDefinitions',
       'modelConfig',
     ])
     expect(createEmptySnapshot()).toEqual({
@@ -161,6 +163,7 @@ describe('local schema snapshot', () => {
       reminders: [],
       calendarEventLinks: [],
       assistantHistory: [],
+      profileFieldDefinitions: [],
       modelConfig: [],
     })
   })
@@ -191,6 +194,7 @@ describe('local schema snapshot', () => {
       reminders: [reminder],
       calendarEventLinks: [calendarEventLink],
       assistantHistory: [],
+      profileFieldDefinitions: DEFAULT_PROFILE_FIELD_DEFINITIONS,
       modelConfig: [
         {
           provider: 'openai-compatible',

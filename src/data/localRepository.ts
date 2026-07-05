@@ -6,10 +6,12 @@ import type {
   NeedTag,
   Reminder,
   AssistantHistoryMessage,
+  ProfileFieldDefinition,
   Todo,
 } from '../domain/types'
 import { parseStoredModelConfig, serializeModelConfig, type ModelConfig } from '../domain/modelConfig'
 import { parseStoredOverlayConfig, serializeOverlayConfig, type OverlayConfig } from '../domain/overlayConfig'
+import { DEFAULT_PROFILE_FIELD_DEFINITIONS, normalizeProfileFieldDefinitions } from '../domain/profileFields'
 
 export interface KeyValueStorage {
   get(key: string): string | null
@@ -40,6 +42,8 @@ export interface LocalRepository {
   deleteCalendarEventLink(calendarEventLinkId: string): void
   listAssistantHistory(): AssistantHistoryMessage[]
   saveAssistantHistory(messages: AssistantHistoryMessage[]): void
+  listProfileFieldDefinitions(): ProfileFieldDefinition[]
+  saveProfileFieldDefinitions(fields: ProfileFieldDefinition[]): void
   getModelApiKey(): string
   saveModelApiKey(apiKey: string): void
   getModelConfig(): ModelConfig
@@ -56,6 +60,7 @@ const INTERACTION_KEY = 'kcust.interactions'
 const REMINDER_KEY = 'kcust.reminders'
 const CALENDAR_EVENT_LINK_KEY = 'kcust.calendarEventLinks'
 const ASSISTANT_HISTORY_KEY = 'kcust.assistantHistory'
+const PROFILE_FIELD_DEFINITIONS_KEY = 'kcust.profileFieldDefinitions'
 const MODEL_API_KEY = 'kcust.modelApiKey'
 const MODEL_CONFIG_KEY = 'kcust.modelConfig'
 const OVERLAY_CONFIG_KEY = 'kcust.overlayConfig'
@@ -169,6 +174,13 @@ export function createLocalRepository(storage: KeyValueStorage): LocalRepository
     },
     saveAssistantHistory(messages) {
       writeArray(storage, ASSISTANT_HISTORY_KEY, messages)
+    },
+    listProfileFieldDefinitions() {
+      const stored = readArray<ProfileFieldDefinition>(storage, PROFILE_FIELD_DEFINITIONS_KEY)
+      return normalizeProfileFieldDefinitions(stored.length ? stored : DEFAULT_PROFILE_FIELD_DEFINITIONS)
+    },
+    saveProfileFieldDefinitions(fields) {
+      writeArray(storage, PROFILE_FIELD_DEFINITIONS_KEY, normalizeProfileFieldDefinitions(fields))
     },
     getModelApiKey() {
       return storage.get(MODEL_API_KEY) ?? ''

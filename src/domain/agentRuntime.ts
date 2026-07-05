@@ -11,7 +11,17 @@ import {
   type AgentToolName,
 } from './agentTools'
 import { runLocalAgentTurn, type AgentMemory } from './conversationAgent'
-import type { Customer, CustomerDraft, CustomerStage, CustomerUpdateDraft, Interaction, ReminderDraft, Todo } from './types'
+import type {
+  Customer,
+  CustomerDraft,
+  CustomerStage,
+  CustomerUpdateDraft,
+  Interaction,
+  ProfileFieldDefinition,
+  ProfileFieldPrimitiveValue,
+  ReminderDraft,
+  Todo,
+} from './types'
 
 export interface OpenAICompatibleModelConfig {
   provider: 'openai-compatible'
@@ -45,6 +55,7 @@ export interface RunAgentContext {
   customers: Customer[]
   todos: Todo[]
   interactions?: Interaction[]
+  profileFields?: ProfileFieldDefinition[]
   now: string
   apiKey: string
   isOnline: boolean
@@ -73,7 +84,13 @@ export async function runAgentCommand(input: string, context: RunAgentContext): 
     return runLocal(input, context)
   }
 
-  const contextSummary = createAgentContextSummary(context.customers, context.todos, context.now, context.interactions ?? [])
+  const contextSummary = createAgentContextSummary(
+    context.customers,
+    context.todos,
+    context.now,
+    context.interactions ?? [],
+    context.profileFields,
+  )
   const modelDisclosure = createModelDisclosure(contextSummary)
   const retryTrace: string[] = []
 
@@ -104,7 +121,7 @@ export async function runAgentCommand(input: string, context: RunAgentContext): 
         })
       },
     )
-    const parsed = parseModelCommand(rawCommand)
+    const parsed = parseModelCommand(rawCommand, contextSummary.profileFields.map((field) => field.key))
     const guarded = applyModelCommandGuardrails(parsed.command, {
       customers: context.customers,
       todos: context.todos,
@@ -174,7 +191,10 @@ function runLocal(input: string, context: RunAgentContext): AgentRunResult {
   }
 }
 
-function parseModelCommand(rawCommand: unknown): { command: AssistantCommand; toolTrace: string[] } {
+function parseModelCommand(
+  rawCommand: unknown,
+  allowedProfileKeys: readonly string[],
+): { command: AssistantCommand; toolTrace: string[] } {
   const parsed = parseJsonObject(rawCommand)
 
   if (!parsed) {
@@ -196,7 +216,7 @@ function parseModelCommand(rawCommand: unknown): { command: AssistantCommand; to
   const topLevelTrace = stringArray(parsed.toolTrace)
 
   if (kind === 'create-customer') {
-    const payload = parseCustomerDraft(parsed.payload)
+    const payload = parseCustomerDraft(parsed.payload, allowedProfileKeys)
     if (!payload) return invalidPayload()
 
     const command: AssistantCommand = {
@@ -238,7 +258,7 @@ function parseModelCommand(rawCommand: unknown): { command: AssistantCommand; to
   }
 
   if (kind === 'update-customer') {
-    const payload = parseUpdateCustomerPayload(parsed.payload)
+    const payload = parseUpdateCustomerPayload(parsed.payload, allowedProfileKeys)
     if (!payload) return invalidPayload()
 
     const command: AssistantCommand = {
@@ -266,7 +286,7 @@ function parseModelCommand(rawCommand: unknown): { command: AssistantCommand; to
   }
 
   if (kind === 'batch-actions') {
-    const payload = parseBatchActionsPayload(parsed.payload)
+    const payload = parseBatchActionsPayload(parsed.payload, allowedProfileKeys)
     if (!payload) return invalidPayload()
 
     const command: AssistantCommand = {
@@ -327,7 +347,7 @@ function parseJsonObject(value: unknown): Record<string, unknown> | null {
   return isRecord(value) ? value : null
 }
 
-function parseCustomerDraft(value: unknown): CustomerDraft | null {
+function parseCustomerDraft(value: unknown, allowedProfileKeys: readonly string[]): CustomerDraft | null {
   if (!isRecord(value)) return null
 
   const draft: CustomerDraft = {}
@@ -359,6 +379,10 @@ function parseCustomerDraft(value: unknown): CustomerDraft | null {
   if (value.urgent !== undefined && urgent === undefined) return null
   if (urgent !== undefined) draft.urgent = urgent
 
+  const profileValues = profileValueMap(value.profileValues, allowedProfileKeys)
+  if (value.profileValues !== undefined && profileValues === undefined) return null
+  if (profileValues !== undefined) draft.profileValues = profileValues
+
   return draft
 }
 
@@ -386,6 +410,7 @@ function parseAgentAnswerPayload(value: unknown): { message: string; toolTrace: 
 
 function parseUpdateCustomerPayload(
   value: unknown,
+  allowedProfileKeys: readonly string[],
 ): CustomerUpdateDraft | null {
   if (!isRecord(value)) return null
   const customerId = optionalNullableString(value.customerId)
@@ -421,12 +446,19 @@ function parseUpdateCustomerPayload(
   if (value.needs !== undefined && needs === undefined) return null
   if (needs !== undefined) draft.needs = needs
 
+  const profileValues = profileValueMap(value.profileValues, allowedProfileKeys)
+  if (value.profileValues !== undefined && profileValues === undefined) return null
+  if (profileValues !== undefined) draft.profileValues = profileValues
+
   const normalizedDraft = normalizeCustomerUpdateDraft(draft)
   if (!hasCustomerUpdateChange(normalizedDraft)) return null
   return normalizedDraft
 }
 
-function parseBatchActionsPayload(value: unknown): { actions: AssistantBatchAction[] } | null {
+function parseBatchActionsPayload(
+  value: unknown,
+  allowedProfileKeys: readonly string[],
+): { actions: AssistantBatchAction[] } | null {
   if (!isRecord(value)) return null
   if (!Array.isArray(value.actions)) return null
 
@@ -437,7 +469,7 @@ function parseBatchActionsPayload(value: unknown): { actions: AssistantBatchActi
     const title = optionalString(rawAction.title)
 
     if (kind === 'update-customer') {
-      const payload = parseUpdateCustomerPayload(rawAction.payload)
+      const payload = parseUpdateCustomerPayload(rawAction.payload, allowedProfileKeys)
       if (!payload) return null
       actions.push({
         kind,
@@ -489,7 +521,8 @@ function hasCustomerUpdateChange(draft: CustomerUpdateDraft): boolean {
       draft.stage ||
       draft.sourceChannel?.trim() ||
       draft.stylePreference?.trim() ||
-      draft.notes?.trim(),
+      draft.notes?.trim() ||
+      hasProfileValues(draft.profileValues),
   )
 }
 
@@ -569,6 +602,41 @@ function optionalNumber(value: unknown): number | undefined {
 
 function optionalBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined
+}
+
+function profileValueMap(
+  value: unknown,
+  allowedProfileKeys: readonly string[],
+): Record<string, ProfileFieldPrimitiveValue> | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) return undefined
+
+  const allowedKeySet = new Set(allowedProfileKeys)
+  const parsed: Record<string, ProfileFieldPrimitiveValue> = {}
+  for (const [key, rawValue] of Object.entries(value)) {
+    if (!allowedKeySet.has(key)) return undefined
+    const parsedValue = profilePrimitiveValue(rawValue)
+    if (parsedValue === undefined) return undefined
+    parsed[key] = parsedValue
+  }
+
+  return parsed
+}
+
+function profilePrimitiveValue(value: unknown): ProfileFieldPrimitiveValue | undefined {
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+  if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) return value
+  return undefined
+}
+
+function hasProfileValues(values: Record<string, ProfileFieldPrimitiveValue> | undefined): boolean {
+  if (!values) return false
+  return Object.values(values).some((value) => {
+    if (value === null || value === undefined) return false
+    if (typeof value === 'string') return value.trim().length > 0
+    if (Array.isArray(value)) return value.length > 0
+    return true
+  })
 }
 
 function optionalCustomerStage(value: unknown): CustomerStage | undefined {

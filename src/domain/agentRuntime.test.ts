@@ -380,6 +380,148 @@ describe('agent runtime', () => {
     })
   })
 
+  it('passes custom profile fields to the model and accepts profileValues in updates', async () => {
+    const modelClient = vi.fn<AgentModelClient>().mockResolvedValue(
+      JSON.stringify({
+        kind: 'update-customer',
+        requiresConfirmation: true,
+        title: '模型客户画像更新草稿',
+        payload: {
+          customerId: 'c-zhang',
+          customerName: '张总',
+          city: '无锡',
+          profileValues: {
+            decisionMaker: '李总',
+          },
+        },
+      }),
+    )
+
+    const result = await runAgentCommand('张总这单最终决策人是李总', {
+      customers,
+      todos,
+      now,
+      apiKey: 'sk-local-test',
+      isOnline: true,
+      profileFields: [
+        {
+          id: 'profile-field-decisionMaker',
+          key: 'decisionMaker',
+          label: '决策人',
+          description: '最终拍板的人',
+          type: 'text',
+          enabled: true,
+          showInSummary: true,
+          extractionHint: '提取最终拍板或主要决策的人',
+          order: 1,
+        },
+      ],
+      modelClient,
+    })
+
+    expect(modelClient.mock.calls[0]?.[0].contextSummary.profileFields).toEqual([
+      expect.objectContaining({
+        key: 'decisionMaker',
+        label: '决策人',
+        extractionHint: '提取最终拍板或主要决策的人',
+      }),
+    ])
+    expect(result.command.kind).toBe('update-customer')
+    if (result.command.kind !== 'update-customer') throw new Error('expected update command')
+    expect(result.command.payload.profileValues).toEqual({ decisionMaker: '李总' })
+    expect(result.modelDisclosure?.profileFieldKeys).toEqual(['decisionMaker'])
+  })
+
+  it('does not send hidden profile fields to the model context', async () => {
+    const modelClient = vi.fn<AgentModelClient>().mockResolvedValue(
+      JSON.stringify({
+        kind: 'agent-answer',
+        requiresConfirmation: false,
+        title: '模型 Agent',
+        payload: { message: '已收到。', toolTrace: [] },
+      }),
+    )
+
+    await runAgentCommand('你好', {
+      customers,
+      todos,
+      now,
+      apiKey: 'sk-local-test',
+      isOnline: true,
+      profileFields: [
+        {
+          id: 'profile-field-decisionMaker',
+          key: 'decisionMaker',
+          label: '决策人',
+          description: '最终拍板的人',
+          type: 'text',
+          enabled: true,
+          showInSummary: true,
+          extractionHint: '提取最终拍板或主要决策的人',
+          order: 1,
+        },
+        {
+          id: 'profile-field-household',
+          key: 'household',
+          label: '家庭结构',
+          description: '客户家庭成员',
+          type: 'text',
+          enabled: false,
+          showInSummary: false,
+          extractionHint: '提取家庭结构',
+          order: 2,
+        },
+      ],
+      modelClient,
+    })
+
+    expect(modelClient.mock.calls[0]?.[0].contextSummary.profileFields.map((field) => field.key)).toEqual([
+      'decisionMaker',
+    ])
+  })
+
+  it('rejects model profileValues that are not configured as profile fields', async () => {
+    const result = await runAgentCommand('张总这单最终决策人是李总', {
+      customers,
+      todos,
+      now,
+      apiKey: 'sk-local-test',
+      isOnline: true,
+      profileFields: [
+        {
+          id: 'profile-field-decisionMaker',
+          key: 'decisionMaker',
+          label: '决策人',
+          description: '最终拍板的人',
+          type: 'text',
+          enabled: true,
+          showInSummary: true,
+          extractionHint: '提取最终拍板或主要决策的人',
+          order: 1,
+        },
+      ],
+      modelClient: vi.fn<AgentModelClient>().mockResolvedValue(
+        JSON.stringify({
+          kind: 'update-customer',
+          requiresConfirmation: true,
+          title: '模型客户画像更新草稿',
+          payload: {
+            customerId: 'c-zhang',
+            customerName: '张总',
+            city: '无锡',
+            profileValues: {
+              unconfiguredProfileKey: '李总',
+            },
+          },
+        }),
+      ),
+    })
+
+    expect(result.command.kind).toBe('unknown')
+    if (result.command.kind !== 'unknown') throw new Error('expected unknown command')
+    expect(result.command.payload.message).toContain('字段不完整')
+  })
+
   it('returns a non-confirming unknown command when model JSON has a valid kind but invalid payload', async () => {
     const result = await runAgentCommand('新增赵女士', {
       customers,

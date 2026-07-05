@@ -24,6 +24,7 @@ export function importRepositorySnapshot(rawSnapshot: string, repository: LocalR
   snapshot.reminders.forEach((reminder) => repository.saveReminder(reminder))
   snapshot.calendarEventLinks.forEach((calendarEventLink) => repository.saveCalendarEventLink(calendarEventLink))
   repository.saveAssistantHistory(snapshot.assistantHistory)
+  repository.saveProfileFieldDefinitions(snapshot.profileFieldDefinitions)
 
   return { status: 'imported', customers: snapshot.customers.length, todos: snapshot.todos.length }
 }
@@ -46,6 +47,7 @@ function isValidSnapshotShape(snapshot: Partial<LocalSnapshot>): snapshot is Loc
     Array.isArray(snapshot.interactions) &&
     Array.isArray(snapshot.reminders) &&
     Array.isArray(snapshot.calendarEventLinks) &&
-    Array.isArray(snapshot.assistantHistory)
+    Array.isArray(snapshot.assistantHistory) &&
+    Array.isArray(snapshot.profileFieldDefinitions)
   )
 }

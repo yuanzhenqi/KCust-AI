@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BUILT_IN_MODEL_BASE_URL } from '../domain/modelConfig'
+import { DEFAULT_PROFILE_FIELD_DEFINITIONS } from '../domain/profileFields'
 import { createLocalRepository, type KeyValueStorage } from './localRepository'
 import type {
   CalendarEventLink,
@@ -141,6 +142,38 @@ describe('local repository', () => {
 
     const reloaded = createLocalRepository(storage)
     expect(reloaded.getOverlayConfig()).toEqual({ dockSide: 'right', size: 'large', opacity: 0.8 })
+  })
+
+  it('stores and reloads custom profile field definitions', () => {
+    const storage = new MemoryStorage()
+    const repository = createLocalRepository(storage)
+
+    expect(repository.listProfileFieldDefinitions()).toEqual(DEFAULT_PROFILE_FIELD_DEFINITIONS)
+
+    repository.saveProfileFieldDefinitions([
+      ...DEFAULT_PROFILE_FIELD_DEFINITIONS,
+      {
+        id: 'profile-field-decisionMaker',
+        key: 'decisionMaker',
+        label: '决策人',
+        description: '最终拍板人',
+        type: 'text',
+        enabled: true,
+        showInSummary: true,
+        extractionHint: '提取客户提到的最终决策人',
+        order: 10,
+      },
+    ])
+
+    const reloaded = createLocalRepository(storage)
+    expect(reloaded.listProfileFieldDefinitions().map((field) => field.key)).toEqual([
+      'budgetWan',
+      'household',
+      'sourceChannel',
+      'stylePreference',
+      'nextFollowUpAt',
+      'decisionMaker',
+    ])
   })
 
   it('falls back to default model configuration when stored config is malformed', () => {

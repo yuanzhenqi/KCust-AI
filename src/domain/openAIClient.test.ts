@@ -5,6 +5,7 @@ import {
   testOpenAICompatibleConnection,
 } from './openAIClient'
 import { BUILT_IN_MODEL_BASE_URL } from './modelConfig'
+import { DEFAULT_PROFILE_FIELD_DEFINITIONS } from './profileFields'
 import type { AgentModelRequest } from './agentRuntime'
 
 const request: AgentModelRequest = {
@@ -20,6 +21,16 @@ const request: AgentModelRequest = {
   tools: ['create-customer', 'query-customers', 'agent-answer', 'update-customer', 'create-interaction', 'create-reminder'],
   contextSummary: {
     now: '2026-05-25T21:00:00.000+08:00',
+    profileFields: DEFAULT_PROFILE_FIELD_DEFINITIONS.map((field) => ({
+      key: field.key,
+      label: field.label,
+      description: field.description,
+      type: field.type,
+      options: field.options,
+      enabled: field.enabled,
+      showInSummary: field.showInSummary,
+      extractionHint: field.extractionHint,
+    })),
     customers: [
       {
         id: 'c-li',

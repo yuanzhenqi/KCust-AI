@@ -61,6 +61,7 @@ describe('KCUST AI app shell', () => {
     expect(input.tagName).toBe('TEXTAREA')
     expect(input).toHaveAttribute('rows', '3')
     expect(input).toHaveValue('张总预算调整为60万，家里有4口人，养了一只猫，并且明天晚上八点提醒我发图纸')
+    expect(within(screen.getByLabelText('Agent 输入动作')).getAllByRole('button')).toHaveLength(2)
   })
 
   it('starts the dedicated agent conversation with an empty state and composer', async () => {
@@ -1076,6 +1077,153 @@ describe('KCUST AI app shell', () => {
     expect(screen.getByText('模型网关已内置')).toBeInTheDocument()
     expect(screen.getByText('Base URL 和 Key 已封装在本机应用内，只需要选择模型。')).toBeInTheDocument()
     expect(screen.queryByLabelText('模型 API Key')).not.toBeInTheDocument()
+  })
+
+  it('lets the user customize customer profile summary fields', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '设置' }))
+    expect(screen.getByLabelText('画像摘要预览')).toBeInTheDocument()
+    expect(screen.queryByLabelText('画像字段 1 名称')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '新增画像字段' }))
+    expect(screen.getByLabelText('画像字段 6 名称')).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('画像字段 6 名称'))
+    await user.type(screen.getByLabelText('画像字段 6 名称'), '决策人')
+    await user.clear(screen.getByLabelText('画像字段 6 键名'))
+    await user.type(screen.getByLabelText('画像字段 6 键名'), 'decisionMaker')
+    await user.clear(screen.getByLabelText('画像字段 6 提取说明'))
+    await user.type(screen.getByLabelText('画像字段 6 提取说明'), '提取最终拍板或主要决策的人')
+    await user.click(screen.getByRole('button', { name: '保存画像字段' }))
+
+    expect(screen.getByText('客户画像字段已保存')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '客户' }))
+    await user.click(screen.getByRole('button', { name: '查看张总详情' }))
+
+    expect(screen.getByText('决策人')).toBeInTheDocument()
+    expect(screen.getAllByText('待补充').length).toBeGreaterThan(0)
+  })
+
+  it('lets the user delete a custom profile field before saving it', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '设置' }))
+    await user.click(screen.getByRole('button', { name: '新增画像字段' }))
+    await user.clear(screen.getByLabelText('画像字段 6 名称'))
+    await user.type(screen.getByLabelText('画像字段 6 名称'), '决策人')
+    await user.clear(screen.getByLabelText('画像字段 6 键名'))
+    await user.type(screen.getByLabelText('画像字段 6 键名'), 'decisionMaker')
+    await user.click(screen.getByRole('button', { name: '删除画像字段 6' }))
+
+    expect(screen.getByText('客户画像字段已保存')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '客户' }))
+    await user.click(screen.getByRole('button', { name: '查看张总详情' }))
+
+    expect(screen.queryByText('决策人')).not.toBeInTheDocument()
+  })
+
+  it('lets the user delete a default profile summary field', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '设置' }))
+    await user.click(screen.getByRole('button', { name: /预算/ }))
+    await user.click(screen.getByRole('button', { name: '删除画像字段 1' }))
+
+    expect(screen.getByText('客户画像字段已保存')).toBeInTheDocument()
+    expect(screen.getByLabelText('画像摘要预览')).not.toHaveTextContent('预算')
+
+    await user.click(screen.getByRole('button', { name: '客户' }))
+    await user.click(screen.getByRole('button', { name: '查看张总详情' }))
+
+    expect(screen.getByLabelText('画像摘要')).not.toHaveTextContent('预算')
+  })
+
+  it('applies a profile field template with one action', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '设置' }))
+    await user.click(screen.getByRole('button', { name: '套用模板 通用销售' }))
+
+    expect(screen.getByLabelText('画像摘要预览')).toHaveTextContent('决策人')
+    expect(screen.getByText('客户画像字段已保存')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '客户' }))
+    await user.click(screen.getByRole('button', { name: '查看张总详情' }))
+
+    expect(screen.getByText('决策人')).toBeInTheDocument()
+  })
+
+  it('keeps old profile fields available after switching templates', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '设置' }))
+    await user.click(screen.getByRole('button', { name: '套用模板 通用销售' }))
+
+    expect(screen.getByLabelText('画像摘要预览')).not.toHaveTextContent('家庭结构')
+    expect(screen.getByRole('button', { name: /家庭结构/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /家庭结构/ })).toHaveTextContent('隐藏')
+
+    await user.click(screen.getByRole('button', { name: /家庭结构/ }))
+    await user.click(screen.getByLabelText('画像字段 6 启用'))
+    await user.click(screen.getByLabelText('画像字段 6 摘要展示'))
+    await user.click(screen.getByRole('button', { name: '保存画像字段' }))
+
+    expect(screen.getByLabelText('画像摘要预览')).toHaveTextContent('家庭结构')
+  })
+
+  it('saves model profileValues into custom customer summary fields', async () => {
+    const user = userEvent.setup()
+    const modelClient = vi.fn<AgentModelClient>().mockResolvedValue(
+      JSON.stringify({
+        kind: 'update-customer',
+        requiresConfirmation: true,
+        title: '模型客户画像更新草稿',
+        payload: {
+          customerId: 'c-zhang',
+          customerName: '张总',
+          city: '无锡',
+          profileValues: {
+            decisionMaker: '李总',
+          },
+        },
+      }),
+    )
+    render(<App modelClient={modelClient} isOnline={true} now="2026-05-25T21:00:00.000+08:00" />)
+
+    await user.click(screen.getByRole('button', { name: '设置' }))
+    await user.click(screen.getByRole('button', { name: '新增画像字段' }))
+    await user.clear(screen.getByLabelText('画像字段 6 名称'))
+    await user.type(screen.getByLabelText('画像字段 6 名称'), '决策人')
+    await user.clear(screen.getByLabelText('画像字段 6 键名'))
+    await user.type(screen.getByLabelText('画像字段 6 键名'), 'decisionMaker')
+    await user.click(screen.getByRole('button', { name: '保存画像字段' }))
+
+    await openAgentTab(user)
+    await user.type(screen.getByRole('textbox', { name: 'AI 助手输入' }), '张总这单最终决策人是李总')
+    await user.click(screen.getByRole('button', { name: '生成草稿' }))
+
+    expect(await screen.findByText('客户更新草稿')).toBeInTheDocument()
+    expect(screen.getByText('decisionMaker: 李总')).toBeInTheDocument()
+    expect(modelClient.mock.calls[0]?.[0].contextSummary.profileFields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'decisionMaker',
+          label: '决策人',
+        }),
+      ]),
+    )
+
+    await user.click(screen.getByRole('button', { name: '确认保存' }))
+    await user.click(screen.getByRole('button', { name: '查看张总详情' }))
+
+    expect(screen.getByText('决策人')).toBeInTheDocument()
+    expect(screen.getByText('李总')).toBeInTheDocument()
   })
 
   it('does not expose model api key editing when Android secure storage is available', async () => {

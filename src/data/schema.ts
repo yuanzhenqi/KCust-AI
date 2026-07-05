@@ -17,6 +17,7 @@ export const LOCAL_SCHEMA_TABLES = [
   'reminders',
   'calendarEventLinks',
   'assistantHistory',
+  'profileFieldDefinitions',
   'modelConfig',
 ] as const
 
@@ -31,6 +32,7 @@ export function createEmptySnapshot(): LocalSchemaSnapshot {
     reminders: [],
     calendarEventLinks: [],
     assistantHistory: [],
+    profileFieldDefinitions: [],
     modelConfig: [],
   }
 }
@@ -46,6 +48,7 @@ export function snapshotFromRepository(repository: LocalRepository): LocalSchema
     reminders: repository.listReminders(),
     calendarEventLinks: repository.listCalendarEventLinks(),
     assistantHistory: repository.listAssistantHistory(),
+    profileFieldDefinitions: repository.listProfileFieldDefinitions(),
     modelConfig: [repository.getModelConfig()],
   }
 }

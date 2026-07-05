@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
   UsersRound,
 } from 'lucide-react'
 import './App.css'
@@ -50,13 +51,31 @@ import {
 } from './domain/modelConfig'
 import { normalizeOverlayConfig, type OverlayConfig } from './domain/overlayConfig'
 import {
+  DEFAULT_PROFILE_FIELD_DEFINITIONS,
+  PROFILE_FIELD_TEMPLATES,
+  applyProfileFieldTemplate,
+  formatProfileFieldValue,
+  getCustomerProfileFieldValue,
+  getSummaryProfileFields,
+  normalizeProfileFieldDefinitions,
+  normalizeProfileFieldKey,
+} from './domain/profileFields'
+import {
   createOpenAICompatibleModelClient,
   listOpenAICompatibleModels,
   testOpenAICompatibleConnection,
   type ModelConnectionTestResult,
   type ModelListResult,
 } from './domain/openAIClient'
-import type { Customer, HealthScore, Interaction, Todo, AssistantHistoryMessage } from './domain/types'
+import type {
+  AssistantHistoryMessage,
+  Customer,
+  HealthScore,
+  Interaction,
+  ProfileFieldDefinition,
+  ProfileFieldType,
+  Todo,
+} from './domain/types'
 import { getNativeCapabilityMatrix } from './native/capabilities'
 import {
   consumeFloatingAssistantCommand,
@@ -281,6 +300,7 @@ function App({
   const [modelConfig, setModelConfig] = useState<ModelConfig>(() => repository.getModelConfig())
   const [modelOptions, setModelOptions] = useState<string[]>([])
   const [overlayConfig, setOverlayConfig] = useState<OverlayConfig>(() => repository.getOverlayConfig())
+  const [profileFields, setProfileFields] = useState<ProfileFieldDefinition[]>(() => repository.listProfileFieldDefinitions())
   const [floatingAssistantState, setFloatingAssistantState] = useState<FloatingAssistantState>('idle')
   const voiceStartYRef = useRef<number | null>(null)
   const voiceActiveRef = useRef(false)
@@ -326,7 +346,7 @@ function App({
     const apiKey = activeModelApiKey(repository.getModelApiKey())
     const online = resolveOnlineStatus(isOnline)
     if (shouldUseModelAgent({ apiKey, online, modelClient })) {
-      const contextSummary = createAgentContextSummary(customers, todos, now, interactions)
+      const contextSummary = createAgentContextSummary(customers, todos, now, interactions, profileFields)
       await executeAssistant(prompt, createModelDisclosure(contextSummary))
       return
     }
@@ -358,6 +378,7 @@ function App({
         customers,
         todos,
         interactions,
+        profileFields,
         now,
         apiKey: modelRunEnabled ? apiKey : '',
         isOnline: resolveOnlineStatus(isOnline),
@@ -421,6 +442,7 @@ function App({
     modelClient,
     modelConfig,
     now,
+    profileFields,
     repository,
     todos,
   ])
@@ -471,7 +493,7 @@ function App({
         const apiKey = activeModelApiKey(repository.getModelApiKey())
         const online = resolveOnlineStatus(isOnline)
         const result = shouldUseModelAgent({ apiKey, online, modelClient })
-          ? await executeAssistant(prompt, createModelDisclosure(createAgentContextSummary(customers, todos, now, interactions)))
+          ? await executeAssistant(prompt, createModelDisclosure(createAgentContextSummary(customers, todos, now, interactions, profileFields)))
           : await executeAssistant(prompt)
 
         if (!result) return
@@ -489,7 +511,7 @@ function App({
         })
       }
     }
-  }, [customers, executeAssistant, interactions, isAssistantRunning, isOnline, modelClient, now, pushFloatingAssistantStatus, repository, todos])
+  }, [customers, executeAssistant, interactions, isAssistantRunning, isOnline, modelClient, now, profileFields, pushFloatingAssistantStatus, repository, todos])
 
   useEffect(() => {
     let cancelled = false
@@ -705,6 +727,13 @@ function App({
     repository.saveOverlayConfig(nextConfig)
     setOverlayConfig(nextConfig)
     setNotice('悬浮窗设置已保存')
+  }
+
+  const saveProfileFields = (fields: ProfileFieldDefinition[]) => {
+    const normalized = normalizeProfileFieldDefinitions(fields)
+    repository.saveProfileFieldDefinitions(normalized)
+    setProfileFields(normalized)
+    setNotice('客户画像字段已保存')
   }
 
   const disableFloatingAssistant = async () => {
@@ -1088,6 +1117,7 @@ function App({
           <CustomerDetailView
             customer={selectedCustomer}
             healthScore={selectedHealthScore}
+            profileFields={profileFields}
             now={now}
             todos={todos.filter((todo) => todo.customerId === selectedCustomer.id)}
             interactions={interactions.filter((interaction) => interaction.customerId === selectedCustomer.id)}
@@ -1149,9 +1179,11 @@ function App({
           modelOptions={modelOptions}
           floatingAssistantState={floatingAssistantState}
           overlayConfig={overlayConfig}
+          profileFields={profileFields}
           onEnableFloatingAssistant={enableFloatingAssistant}
           onDisableFloatingAssistant={disableFloatingAssistant}
           onUpdateOverlayConfig={updateOverlayConfig}
+          onSaveProfileFields={saveProfileFields}
           onSaveModelSettings={saveModelSettings}
           onTestModelConnection={testModelConnection}
           onLoadModelOptions={loadModelOptions}
@@ -1416,6 +1448,7 @@ function CustomerCreateForm({
 function CustomerDetailView({
   customer,
   healthScore,
+  profileFields,
   now,
   todos,
   interactions,
@@ -1427,6 +1460,7 @@ function CustomerDetailView({
 }: {
   customer: Customer
   healthScore: HealthScore
+  profileFields: ProfileFieldDefinition[]
   now: string
   todos: Todo[]
   interactions: Interaction[]
@@ -1441,6 +1475,7 @@ function CustomerDetailView({
   const [isAddingInteraction, setIsAddingInteraction] = useState(false)
   const nextStepSuggestion = buildNextStepSuggestion(customer, todos, now)
   const timelineInteractions = sortInteractionsForTimeline(interactions)
+  const summaryProfileFields = getSummaryProfileFields(profileFields)
 
   const saveEdits = (draft: CustomerFormDraft) => {
     onUpdate({
@@ -1518,32 +1553,18 @@ function CustomerDetailView({
         </div>
         <span className="stage-pill">{customer.stage}</span>
       </section>
-      <section className="section-block">
+      <section className="section-block" aria-label="画像摘要">
         <SectionTitle icon={CircleUserRound} title="画像摘要" />
         <div className="detail-grid">
-          <div>
-            <span>预算</span>
-            <strong>{customer.budgetWan ? `${customer.budgetWan}w` : '待补充'}</strong>
-          </div>
+          {summaryProfileFields.map((field) => (
+            <div key={field.id}>
+              <span>{field.label}</span>
+              <strong>{formatProfileFieldValue(getCustomerProfileFieldValue(customer, field), field)}</strong>
+            </div>
+          ))}
           <div>
             <span>健康度</span>
             <strong>{healthScore.score}</strong>
-          </div>
-          <div>
-            <span>家庭结构</span>
-            <strong>{customer.household || '待补充'}</strong>
-          </div>
-          <div>
-            <span>来源渠道</span>
-            <strong>{customer.sourceChannel || '待补充'}</strong>
-          </div>
-          <div>
-            <span>风格偏好</span>
-            <strong>{customer.stylePreference || '待补充'}</strong>
-          </div>
-          <div>
-            <span>下次跟进</span>
-            <strong>{formatDateTime(customer.nextFollowUpAt)}</strong>
           </div>
         </div>
         <div className="tags detail-tags">
@@ -1741,9 +1762,11 @@ function SettingsView({
   modelOptions,
   floatingAssistantState,
   overlayConfig,
+  profileFields,
   onEnableFloatingAssistant,
   onDisableFloatingAssistant,
   onUpdateOverlayConfig,
+  onSaveProfileFields,
   onSaveModelSettings,
   onTestModelConnection,
   onLoadModelOptions,
@@ -1755,9 +1778,11 @@ function SettingsView({
   modelOptions: string[]
   floatingAssistantState: FloatingAssistantState
   overlayConfig: OverlayConfig
+  profileFields: ProfileFieldDefinition[]
   onEnableFloatingAssistant: () => void | Promise<void>
   onDisableFloatingAssistant: () => void | Promise<void>
   onUpdateOverlayConfig: (config: Partial<OverlayConfig>) => void
+  onSaveProfileFields: (fields: ProfileFieldDefinition[]) => void
   onSaveModelSettings: (settings: { model: string }) => void | Promise<void>
   onTestModelConnection: (settings: { model: string }) => void | Promise<void>
   onLoadModelOptions: (settings: { model: string }) => void | Promise<void>
@@ -1786,7 +1811,7 @@ function SettingsView({
   return (
     <div className="stack">
       <section className="setting-key-card">
-        <div>
+        <div className="setting-title-row">
           <KeyRound size={20} />
           <strong>{isModelApiKeyConfigured ? '模型网关已内置' : '模型网关未启用'}</strong>
         </div>
@@ -1833,8 +1858,9 @@ function SettingsView({
           </button>
         </div>
       </section>
+      <ProfileFieldSettings fields={profileFields} onSave={onSaveProfileFields} />
       <section className="setting-key-card">
-        <div>
+        <div className="setting-title-row">
           <CircleUserRound size={20} />
           <strong>回收站</strong>
         </div>
@@ -1925,6 +1951,229 @@ function SettingsView({
       ))}
     </div>
   )
+}
+
+function ProfileFieldSettings({
+  fields,
+  onSave,
+}: {
+  fields: ProfileFieldDefinition[]
+  onSave: (fields: ProfileFieldDefinition[]) => void
+}) {
+  const [draftFields, setDraftFields] = useState<ProfileFieldDefinition[]>(fields)
+  const fieldTypes: Array<{ value: ProfileFieldType; label: string }> = [
+    { value: 'text', label: '文本' },
+    { value: 'number', label: '数字' },
+    { value: 'singleSelect', label: '单选' },
+    { value: 'multiSelect', label: '多选' },
+    { value: 'date', label: '日期' },
+    { value: 'boolean', label: '是/否' },
+  ]
+
+  const updateField = (id: string, patch: Partial<ProfileFieldDefinition>) => {
+    setDraftFields((current) => current.map((field) => (field.id === id ? { ...field, ...patch } : field)))
+  }
+  const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null)
+  const normalizedDraftFields = normalizeProfileFieldDefinitions(draftFields)
+  const summaryFields = normalizedDraftFields.filter((field) => field.enabled && field.showInSummary)
+
+  const applyTemplate = (templateFields: ProfileFieldDefinition[]) => {
+    const nextFields = applyProfileFieldTemplate(draftFields, templateFields)
+    setDraftFields(nextFields)
+    setExpandedFieldId(null)
+    onSave(nextFields)
+  }
+
+  const deleteField = (id: string) => {
+    const nextFields = draftFields.filter((field) => field.id !== id)
+    setDraftFields(nextFields)
+    setExpandedFieldId((current) => (current === id ? null : current))
+    onSave(nextFields)
+  }
+
+  const restoreDefaultFields = () => {
+    const nextFields = applyProfileFieldTemplate(draftFields, DEFAULT_PROFILE_FIELD_DEFINITIONS)
+    setDraftFields(nextFields)
+    setExpandedFieldId(null)
+    onSave(nextFields)
+  }
+
+  const addField = () => {
+    const order = draftFields.length + 1
+    const key = `customField${order}`
+    const nextField: ProfileFieldDefinition = {
+      id: `profile-field-${key}`,
+      key,
+      label: `自定义字段 ${order}`,
+      description: '',
+      type: 'text',
+      enabled: true,
+      showInSummary: true,
+      extractionHint: '',
+      order,
+    }
+    setDraftFields((current) => [...current, nextField])
+    setExpandedFieldId(nextField.id)
+  }
+
+  return (
+    <section className="setting-key-card profile-field-manager">
+      <div className="setting-title-row">
+        <CircleUserRound size={20} />
+        <strong>客户画像字段</strong>
+      </div>
+      <p>这里配置客户详情“画像摘要”的字段，Agent 会按这些字段理解并写入客户资料。</p>
+      <p className="profile-field-note">切换模板只调整摘要展示和 Agent 提取字段，不会删除已有客户资料；隐藏字段会保留在字段库里，可随时重新启用。</p>
+      <div className="profile-template-panel" aria-label="画像字段模板">
+        <span>选择模板</span>
+        <div>
+          {PROFILE_FIELD_TEMPLATES.map((template) => (
+            <button
+              type="button"
+              aria-label={`套用模板 ${template.name}`}
+              onClick={() => applyTemplate(template.fields)}
+              key={template.id}
+            >
+              <strong>{template.name}</strong>
+              <small>{template.description}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="profile-field-preview" aria-label="画像摘要预览">
+        <span>摘要预览</span>
+        <div>
+          {summaryFields.map((field) => (
+            <strong key={field.id}>{field.label}</strong>
+          ))}
+        </div>
+      </div>
+      <div className="profile-field-list">
+        {draftFields.map((field, index) => {
+          const displayIndex = index + 1
+          const isExpanded = expandedFieldId === field.id
+          return (
+            <div className="profile-field-row" key={field.id}>
+              <button
+                type="button"
+                className="profile-field-summary"
+                aria-expanded={isExpanded}
+                onClick={() => setExpandedFieldId(isExpanded ? null : field.id)}
+              >
+                <span className="profile-field-index">{displayIndex}</span>
+                <span className="profile-field-main">
+                  <strong>{field.label || '未命名字段'}</strong>
+                  <small>{field.key || '未设置键名'} · {profileFieldTypeLabel(field.type)}</small>
+                </span>
+                <span className="profile-field-badges">
+                  {field.enabled && <em>启用</em>}
+                  {field.enabled && field.showInSummary && <em>摘要</em>}
+                  {(!field.enabled || !field.showInSummary) && <em>隐藏</em>}
+                </span>
+              </button>
+              {isExpanded && (
+                <div className="profile-field-editor">
+                  <div className="profile-field-grid">
+                    <label>
+                      <span>名称</span>
+                      <input
+                        aria-label={`画像字段 ${displayIndex} 名称`}
+                        value={field.label}
+                        onChange={(event) => updateField(field.id, { label: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>键名</span>
+                      <input
+                        aria-label={`画像字段 ${displayIndex} 键名`}
+                        value={field.key}
+                        onChange={(event) => updateField(field.id, { key: normalizeProfileFieldKey(event.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      <span>类型</span>
+                      <select
+                        aria-label={`画像字段 ${displayIndex} 类型`}
+                        value={field.type}
+                        onChange={(event) => updateField(field.id, { type: event.target.value as ProfileFieldType })}
+                      >
+                        {fieldTypes.map((type) => (
+                          <option value={type.value} key={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="profile-field-hint">
+                      <span>提取说明</span>
+                      <textarea
+                        aria-label={`画像字段 ${displayIndex} 提取说明`}
+                        value={field.extractionHint}
+                        onChange={(event) => updateField(field.id, { extractionHint: event.target.value })}
+                        rows={3}
+                      />
+                    </label>
+                  </div>
+                  <div className="profile-field-switches">
+                    <label>
+                      <input
+                        type="checkbox"
+                        aria-label={`画像字段 ${displayIndex} 启用`}
+                        checked={field.enabled}
+                        onChange={(event) => updateField(field.id, { enabled: event.target.checked })}
+                      />
+                      <span>启用</span>
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        aria-label={`画像字段 ${displayIndex} 摘要展示`}
+                        checked={field.showInSummary}
+                        onChange={(event) => updateField(field.id, { showInSummary: event.target.checked })}
+                      />
+                      <span>摘要展示</span>
+                    </label>
+                  </div>
+                  <div className="profile-field-editor-actions">
+                    <span>删除后可通过模板或默认字段恢复。</span>
+                    <button
+                      type="button"
+                      className="danger-action"
+                      aria-label={`删除画像字段 ${displayIndex}`}
+                      onClick={() => deleteField(field.id)}
+                    >
+                      <Trash2 size={15} />
+                      删除字段
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <div className="setting-actions">
+        <button type="button" className="ghost-action" onClick={addField}>
+          新增画像字段
+        </button>
+        <button type="button" className="ghost-action" onClick={restoreDefaultFields}>
+          恢复默认字段
+        </button>
+        <button type="button" className="primary-action" onClick={() => onSave(draftFields)}>
+          保存画像字段
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function profileFieldTypeLabel(type: ProfileFieldType): string {
+  if (type === 'number') return '数字'
+  if (type === 'singleSelect') return '单选'
+  if (type === 'multiSelect') return '多选'
+  if (type === 'date') return '日期'
+  if (type === 'boolean') return '是/否'
+  return '文本'
 }
 
 function AgentChatView({
@@ -2113,7 +2362,7 @@ function AssistantComposer({
         placeholder="告诉我：新增客户、查询客户、修改需求、创建提醒..."
         rows={3}
       />
-      <div className="assistant-input-actions">
+      <div className="assistant-input-actions" aria-label="Agent 输入动作">
         <HoldVoiceButton
           className="hold-voice-button"
           disabled={isRunning}
@@ -2390,6 +2639,7 @@ function ModelDisclosureText({ disclosure }: { disclosure: AgentModelDisclosure 
       <span>{`Disclosure：${disclosure.provider} · 客户 ${disclosure.customerCount} 位 · 待办 ${disclosure.todoCount} 条`}</span>
       <span>{`沟通记录 ${disclosure.interactionCount} 条`}</span>
       <span>{`客户字段：${disclosure.customerFields.join(', ')}`}</span>
+      <span>{`画像字段：${disclosure.profileFieldKeys.join(', ')}`}</span>
       <span>{`待办字段：${disclosure.todoFields.join(', ')}`}</span>
       <span>{`沟通字段：${disclosure.interactionFields.join(', ')}`}</span>
     </div>
@@ -2509,6 +2759,7 @@ function fieldLabel(key: string): string {
     serviceValue: '服务价值',
     firstInteractionAt: '首次沟通时间',
     firstInteractionSummary: '首次沟通',
+    profileValues: '画像字段',
     title: '标题',
     scheduledAt: '提醒时间',
     channel: '提醒渠道',
@@ -2519,6 +2770,11 @@ function fieldLabel(key: string): string {
 
 function formatFieldValue(key: string, value: unknown): string {
   if (Array.isArray(value)) return value.join('、')
+  if (key === 'profileValues' && value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([profileKey, profileValue]) => `${profileKey}: ${formatProfilePrimitiveForCard(profileValue)}`)
+      .join('；')
+  }
   if (key === 'budgetWan' && typeof value === 'number') return `${value}w`
   if (key === 'areaSqm' && typeof value === 'number') return `${value}平`
   if (typeof value === 'boolean') return value ? '是' : '否'
@@ -2532,6 +2788,13 @@ function formatFieldValue(key: string, value: unknown): string {
   if (key === 'channel' && value === 'app-and-calendar') return 'app 内提醒 + 安卓本机日历'
   if (key === 'status' && value === 'draft') return '待确认'
   return String(value || '未填写')
+}
+
+function formatProfilePrimitiveForCard(value: unknown): string {
+  if (Array.isArray(value)) return value.join('、')
+  if (typeof value === 'boolean') return value ? '是' : '否'
+  if (value === null || value === undefined || value === '') return '未填写'
+  return String(value)
 }
 
 function capabilityIcon(id: ReturnType<typeof getNativeCapabilityMatrix>[number]['id']) {

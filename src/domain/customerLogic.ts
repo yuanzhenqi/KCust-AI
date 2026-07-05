@@ -8,6 +8,7 @@ import type {
   Todo,
 } from './types'
 import { normalizeCustomerUpdateDraft } from './customerUpdateNormalization'
+import { mergeCustomerProfileValues } from './profileFields'
 
 const DEFAULT_NOW = '2026-05-25T21:00:00.000+08:00'
 
@@ -18,7 +19,7 @@ export function createCustomerFromDraft(draft: CustomerDraft, now = DEFAULT_NOW)
     .replace(/^-|-$/g, '')
     .toLowerCase()
 
-  return {
+  const customer: Customer = {
     id: `cust-${idSeed || crypto.randomUUID()}`,
     name: displayName,
     city: draft.city?.trim() || '未填写',
@@ -37,6 +38,8 @@ export function createCustomerFromDraft(draft: CustomerDraft, now = DEFAULT_NOW)
     updatedAt: now,
     syncStatus: 'local',
   }
+
+  return mergeCustomerProfileValues(customer, draft.profileValues, draft.notes ?? '', now)
 }
 
 export function filterCustomersByCity(customers: Customer[], city: string): Customer[] {
@@ -89,7 +92,7 @@ export function applyCustomerUpdateToBestMatch(
     ...(normalizedInput.needs ?? []),
   ])
 
-  const updatedCustomer: Customer = {
+  const updatedCustomer: Customer = mergeCustomerProfileValues({
     ...target,
     ...(normalizedInput.budgetWan !== undefined ? { budgetWan: normalizedInput.budgetWan } : {}),
     ...(normalizedInput.areaSqm !== undefined ? { areaSqm: normalizedInput.areaSqm } : {}),
@@ -101,7 +104,7 @@ export function applyCustomerUpdateToBestMatch(
     ...(normalizedInput.notes?.trim() ? { notes: normalizedInput.notes.trim() } : {}),
     needs: nextNeeds,
     updatedAt: input.now,
-  }
+  }, normalizedInput.profileValues, normalizedInput.need ?? normalizedInput.notes ?? '', input.now)
 
   return {
     customers: customers.map((customer) => (customer.id === target.id ? updatedCustomer : customer)),
